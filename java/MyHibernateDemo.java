@@ -1,34 +1,46 @@
-import javax.persistence.*;
+import com.mysql.cj.jdbc.MysqlDataSource;
+import org.hibernate.jpa.HibernatePersistenceProvider;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 
-import java.util.Iterator;
+import javax.persistence.*;
+import javax.sql.DataSource;
+
 import java.util.List;
 import java.util.Properties;
 
 public class MyHibernateDemo {
 
-//    private DataSource getDataSource() {
-//        final MysqlDataSource dataSource = new MysqlDataSource();
-//        dataSource.setDatabaseName("backpack");
-//        dataSource.setUser("slleer");
-//        dataSource.setPassword("AntraToaster0!Cart");
-//        dataSource.setUrl("jdbc:mysql//localhost:3306/");
-//        return dataSource;
-//    }
+    private DataSource getDataSource() {
+        final MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setDatabaseName("backpack");
+        dataSource.setUser("slleer");
+        dataSource.setPassword("AntraToaster0!Cart");
+        dataSource.setUrl("jdbc:mysql://localhost:3306/");
+        return dataSource;
+    }
 
     private Properties getProperties() {
         final Properties properties = new Properties();
-        properties.setProperty("javax.persistence.jdbc.user", "slleer");
-        properties.setProperty("javax.persistence.jdbc.password", "AntraToaster0!Cart");
-        properties.setProperty("javax.persistence.jdbc.url", "jdbc:mysql//localhost:3306/backpack");
         properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect");
-        // possible source of issue, if problem here change key to: javax.persistence.jdbc.driver
-        properties.setProperty("hibernate.connection.driver_class", "com.mysql.jdbc.Driver");
+        properties.setProperty("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
         return properties;
     }
 
-    private EntityManagerFactory entityManagerFactory() {
-        return Persistence.createEntityManagerFactory("Hibernate-Demo", this.getProperties());
+    private EntityManagerFactory entityManagerFactory(DataSource dataSource, Properties properties) {
+        final LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource);
+        em.setPackagesToScan("com/example/java92022/week3/orm/demo3");
+        em.setJpaVendorAdapter( new HibernateJpaVendorAdapter() );
+        em.setJpaProperties( properties );
+        em.setPersistenceUnitName( "demo-unit" );
+        em.setPersistenceProviderClass(HibernatePersistenceProvider.class);
+        em.afterPropertiesSet();
+        return em.getObject();
+//        return (EntityManagerFactory) Persistence.createEntityManagerFactory("Hibernate-Demo");
     }
+
+
     private static void insertPlayer(EntityManager em, String name, String uName) {
         EntityTransaction tx = em.getTransaction();
         tx.begin();
@@ -43,13 +55,13 @@ public class MyHibernateDemo {
         em.persist(player);
         em.getTransaction().commit();
     }
-    private static void getPlayerById(EntityManager em, String id) {
+    private static void getPlayerById(EntityManager em, int id) {
         Player player = em.find(Player.class, id);
         System.out.println(player);
     }
-    private static void getPlayerByName(EntityManager em, String name) {
-        Query query = em.createQuery("select p from Player p where p.name = ?1");
-        query.setParameter(1, name);
+    private static void getPlayerByUsername(EntityManager em, String uName) {
+        Query query = em.createQuery("select p from Player p where p.username = ?1");
+        query.setParameter(1, uName);
         Player p = (Player)query.getSingleResult();
         System.out.println(p);
     }
@@ -59,22 +71,41 @@ public class MyHibernateDemo {
         player.setName(name);
         em.getTransaction().commit();
     }
-    private static void deletePlayerById(EntityManager em, String p_id) {
-        Player player = em.find(Player.class, p_id);
-        deleteCharactersByPlayer(em, player);
+    private static void deletePlayerById(EntityManager em, int p_id) {
         em.getTransaction().begin();
+        Player player = em.find(Player.class, p_id);
+        for(PlayerCharacter pc : player.getPlayerCharacterList()) {
+            for(CharacterItem charItem : pc.getCharacterItemList()){
+                System.out.println(charItem);
+                em.remove(charItem);
+            }
+            System.out.println(pc);
+            em.remove(pc);
+        }
+        System.out.println(player);
         em.remove(player);
         em.getTransaction().commit();
     }
-    private static void insertCharacterForExistingPlayer(EntityManager em, String uName, String charName) {
+    private static void insertCharacterForExistingPlayer(EntityManager em, int id, String charName) {
         EntityTransaction tx = em.getTransaction();
         tx.begin();
-        Player p_id = em.find(Player.class, uName);
+        Player p_id = em.find(Player.class, id);
         PlayerCharacter pc = new PlayerCharacter();
         pc.setCharName(charName);
         pc.setPlayer_ID(p_id);
         em.persist(pc);
         tx.commit();
+    }
+    private static void insertCharacterForExistingPlayer(EntityManager em, String uName, String charName) {
+        Query query = em.createQuery("select p from Player p where p.username = ?1");
+        query.setParameter(1, uName);
+        Player player = (Player) query.getSingleResult();
+        PlayerCharacter pc = new PlayerCharacter();
+        pc.setPlayer_ID(player);
+        pc.setCharName(charName);
+        em.getTransaction().begin();
+        em.persist(pc);
+        em.getTransaction().commit();
     }
     private static void insertCharacterForExistingPlayer(EntityManager em, Player player, String charName) {
         EntityTransaction tx = em.getTransaction();
@@ -85,23 +116,23 @@ public class MyHibernateDemo {
         em.persist(pc);
         tx.commit();
     }
-    private static void getCharactersByPlayer(Player player) {
+    private static void getCharacterListByPlayer(Player player) {
         List<PlayerCharacter> pcList = player.getPlayerCharacterList();
         for (PlayerCharacter playerCharacter : pcList) {
             System.out.println(playerCharacter);
         }
     }
-    private static PlayerCharacter getCharacterByCharName(EntityManager em, String charName, Player player) {
+    private static PlayerCharacter getCharacterByPlayerAndCharName(EntityManager em, String charName, Player player) {
         Query query = em.createQuery("select c from PlayerCharacter c where c.charName = ?1 and c.player_ID = ?2");
         query.setParameter(1, charName);
         query.setParameter(2, player);
         return (PlayerCharacter) query.getSingleResult();
     }
-    private static void getCharactersByPlayerId(EntityManager em, String p_id) {
+    private static void getCharactersByPlayerId(EntityManager em, int p_id) {
         Player player = em.find(Player.class, p_id);
-        getCharactersByPlayer(player);
+        getCharacterListByPlayer(player);
     }
-    private static void updatePlayerCharacterCharNameById(EntityManager em, String id, String charName) {
+    private static void updatePlayerCharacterCharNameById(EntityManager em, int id, String charName) {
         PlayerCharacter pc = em.find(PlayerCharacter.class, id);
         em.getTransaction().begin();
         pc.setCharName(charName);
@@ -115,17 +146,16 @@ public class MyHibernateDemo {
         em.remove(pc);
         em.getTransaction().commit();
     }
-    private static void deleteCharactersByPlayer(EntityManager em, Player player) {
+    private static void deleteCharactersByPlayerId(EntityManager em, int id) {
         em.getTransaction().begin();
-        Player p = em.find(Player.class, player.getUsername());
-        Iterator<PlayerCharacter> charItr = p.getPlayerCharacterList().iterator();
-        while(charItr.hasNext()) {
-            PlayerCharacter pc = charItr.next();
-            Iterator<CharacterItem> itmItr = pc.getCharacterItemList().iterator();
-            while(itmItr.hasNext()) {
-                itmItr.remove();
+        Player player = em.find(Player.class, id);
+        for(PlayerCharacter pc : player.getPlayerCharacterList()) {
+            for(CharacterItem charItem : pc.getCharacterItemList()){
+                System.out.println("DELETING: " + charItem);
+                em.remove(charItem);
             }
-            charItr.remove();
+            System.out.println("DELETING: " + pc);
+            em.remove(pc);
         }
         em.getTransaction().commit();
     }
@@ -179,6 +209,8 @@ public class MyHibernateDemo {
     private static void insertCharacterItem(EntityManager em, PlayerCharacter pc, Item item) {
         em.getTransaction().begin();
         CharacterItem charItem = new CharacterItem(pc, item);
+        charItem.setCharacter(pc);
+        charItem.setItem(item);
         charItem.setCount(1);
         charItem.setAttuned(false);
         em.persist(charItem);
@@ -187,6 +219,8 @@ public class MyHibernateDemo {
     private static void insertCharacterItem(EntityManager em, PlayerCharacter pc, Item item, int count) {
         em.getTransaction().begin();
         CharacterItem charItem = new CharacterItem(pc, item);
+        charItem.setCharacter(pc);
+        charItem.setItem(item);
         charItem.setCount(count);
         charItem.setAttuned(false);
         em.persist(charItem);
@@ -195,6 +229,8 @@ public class MyHibernateDemo {
     private static void insertCharacterItem(EntityManager em, PlayerCharacter pc, Item item, boolean attuned) {
         em.getTransaction().begin();
         CharacterItem charItem = new CharacterItem(pc, item);
+        charItem.setCharacter(pc);
+        charItem.setItem(item);
         charItem.setCount(1);
         charItem.setAttuned(attuned);
         em.persist(charItem);
@@ -203,10 +239,21 @@ public class MyHibernateDemo {
     private static void insertCharacterItem(EntityManager em, PlayerCharacter pc, Item item, int count, boolean attuned) {
         em.getTransaction().begin();
         CharacterItem charItem = new CharacterItem(pc, item);
+        charItem.setCharacter(pc);
+        charItem.setItem(item);
         charItem.setCount(count);
         charItem.setAttuned(attuned);
         em.persist(charItem);
         em.getTransaction().commit();
+    }
+    private static void getCharacterItem(EntityManager em, int id) {
+        CharacterItem characterItem = em.find(CharacterItem.class, id);
+        System.out.println(characterItem);
+    }
+    private static void getCharacterItem(EntityManager em, String name) {
+        Query query = em.createQuery("select c from character_items c where c.name = ?1");
+        query.setParameter(1, name);
+        System.out.println((CharacterItem)query.getSingleResult());
     }
     private static void updateCharacterItemCountById(EntityManager em, int id, int count) {
         em.getTransaction().begin();
@@ -245,15 +292,15 @@ public class MyHibernateDemo {
     }
 
     public static void main(String[] args) {
-        MyHibernateDemo demo = new MyHibernateDemo();
-        Properties properties = demo.getProperties();
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("Hibernate-Demo");
-        EntityManager em = emf.createEntityManager();
+        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("xxx");
+        System.out.println("hsdlfksjd");
+        EntityManager em = entityManagerFactory.createEntityManager();
+        PersistenceUnitUtil unitUtil = entityManagerFactory.getPersistenceUnitUtil();
         Player player1 = new Player();
         player1.setUsername("usr1");
         player1.setName("name1");
         insertPlayer(em, player1);
-        insertPlayer(em, "usr2", "name2");
+        insertPlayer(em,"name2", "usr2" );
         insertCharacterForExistingPlayer(em, "usr2", "char1");
         insertCharacterForExistingPlayer(em, "usr2", "char2");
         insertCharacterForExistingPlayer(em, "usr2", "char2");
@@ -271,8 +318,21 @@ public class MyHibernateDemo {
         Item item1 = getItemByName(em, "item1");
         Item item2 = getItemByName(em, "item2");
         Item item3 = getItemByName(em, "item3");
-        PlayerCharacter pc1 = getCharacterByCharName(em, "char1", player1);
-        PlayerCharacter pc2 = getCharacterByCharName(em, "char2", player1);
+        PlayerCharacter pc1 = getCharacterByPlayerAndCharName(em, "char1", player1);
+        PlayerCharacter pc2 = getCharacterByPlayerAndCharName(em, "char2", player1);
+        PlayerCharacter pc3 = getCharacterByPlayerAndCharName(em, "char3", player1);
+        insertCharacterItem(em, pc1, item1);
+        insertCharacterItem(em, pc2, item2);
+        insertCharacterItem(em, pc2, item3);
+        getPlayerById(em,1);
+        getPlayerByUsername(em, "usr1");
+        getCharacterListByPlayer(player1);
+        getCharacterByPlayerAndCharName(em, "char1", player1);
+        getCharactersByPlayerId(em, 2);
+        getItemByName(em, "item2");
+        deleteCharactersByPlayerId(em, 1);
+        em.close();
+        System.exit(0);
 
 
 

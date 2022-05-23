@@ -21,7 +21,7 @@ public class PlayerCharacter {
     private String charName;
 
     @OneToOne
-    @JoinColumn(name = "player_ID", referencedColumnName = "username")
+    @JoinColumn(name = "player_ID", referencedColumnName = "id")
     private Player player_ID;
 
 
@@ -48,8 +48,8 @@ public class PlayerCharacter {
         return player_ID;
     }
 
-    public void setPlayer_ID(Player player_ID) {
-        this.player_ID = player_ID;
+    public void setPlayer_ID(Player player) {
+        this.player_ID = player;
     }
 
     public void addCharacterItem(CharacterItem charItem) {

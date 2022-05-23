@@ -18,7 +18,7 @@ public class CharacterItem {
     }
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private String id;
+    private int id;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "c_id", referencedColumnName = "id")
@@ -33,6 +33,22 @@ public class CharacterItem {
 
     @Column(name = "attuned")
     private boolean isAttuned;
+
+    public PlayerCharacter getCharacter() {
+        return character;
+    }
+
+    public void setCharacter(PlayerCharacter character) {
+        this.character = character;
+    }
+
+    public Item getItem() {
+        return item;
+    }
+
+    public void setItem(Item item) {
+        this.item = item;
+    }
 
     public int getCount() {
         return count;
@@ -77,7 +93,7 @@ public class CharacterItem {
         if (this == o) return true;
         if (!(o instanceof CharacterItem)) return false;
         CharacterItem that = (CharacterItem) o;
-        return id.equals(that.id) && character.equals(that.character) && item.equals(that.item);
+        return id == that.id && character.equals(that.character) && item.equals(that.item);
     }
 
     @Override

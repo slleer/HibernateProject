@@ -14,13 +14,16 @@ import java.util.Objects;
 @AllArgsConstructor
 public class Player {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
     @Column(name = "username", unique = true, nullable = false)
     private String username;
     @Column(name = "name")
     private String name;
 
 
-    @OneToMany(mappedBy = "player", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "player_ID", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PlayerCharacter> playerCharacterList = new ArrayList<>();
 
     public List<PlayerCharacter> getPlayerCharacterList() {
