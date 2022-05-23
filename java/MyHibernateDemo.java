@@ -11,36 +11,6 @@ import java.util.Properties;
 
 public class MyHibernateDemo {
 
-    private DataSource getDataSource() {
-        final MysqlDataSource dataSource = new MysqlDataSource();
-        dataSource.setDatabaseName("backpack");
-        dataSource.setUser("slleer");
-        dataSource.setPassword("AntraToaster0!Cart");
-        dataSource.setUrl("jdbc:mysql://localhost:3306/");
-        return dataSource;
-    }
-
-    private Properties getProperties() {
-        final Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect");
-        properties.setProperty("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
-        return properties;
-    }
-
-    private EntityManagerFactory entityManagerFactory(DataSource dataSource, Properties properties) {
-        final LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(dataSource);
-        em.setPackagesToScan("com/example/java92022/week3/orm/demo3");
-        em.setJpaVendorAdapter( new HibernateJpaVendorAdapter() );
-        em.setJpaProperties( properties );
-        em.setPersistenceUnitName( "demo-unit" );
-        em.setPersistenceProviderClass(HibernatePersistenceProvider.class);
-        em.afterPropertiesSet();
-        return em.getObject();
-//        return (EntityManagerFactory) Persistence.createEntityManagerFactory("Hibernate-Demo");
-    }
-
-
     private static void insertPlayer(EntityManager em, String name, String uName) {
         EntityTransaction tx = em.getTransaction();
         tx.begin();
@@ -324,6 +294,8 @@ public class MyHibernateDemo {
         insertCharacterItem(em, pc1, item1);
         insertCharacterItem(em, pc2, item2);
         insertCharacterItem(em, pc2, item3);
+        updateCharacterItemIncrementCountById(em, 2, 5);
+        getCharacterItem(em, 2);
         getPlayerById(em,1);
         getPlayerByUsername(em, "usr1");
         getCharacterListByPlayer(player1);
